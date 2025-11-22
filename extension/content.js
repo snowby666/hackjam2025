@@ -544,10 +544,13 @@ function renderSidebarContent(sidebar) {
 
 function renderResults(analysis) {
   const container = document.getElementById('sherlock-results-area');
-  if (!container) return; // Should check if sidebar is still open
+  if (!container) return; 
   
   const scoreColor = analysis.interest_score > 75 ? '#22c55e' : analysis.interest_score > 40 ? '#eab308' : '#ef4444';
   
+  // Helper to escape quotes
+  const escape = (str) => (str || '').replace(/'/g, "\\'");
+
   container.innerHTML = `
     <div class="sherlock-result-card">
       <div class="sherlock-score-ring" style="border-color: ${scoreColor}20">
@@ -564,6 +567,21 @@ function renderResults(analysis) {
         </div>
       ` : ''}
 
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background:#f8fafc; padding:8px; border-radius:8px;">
+            <div style="font-weight:600; font-size:12px; text-transform:capitalize;">${analysis.vibe_report.overall_mood}</div>
+            <div style="font-size:10px; color:#64748b;">Mood</div>
+        </div>
+        <div style="background:#f8fafc; padding:8px; border-radius:8px;">
+            <div style="font-weight:600; font-size:12px; text-transform:capitalize;">${analysis.vibe_report.engagement_level}</div>
+            <div style="font-size:10px; color:#64748b;">Engagement</div>
+        </div>
+        <div style="background:#f8fafc; padding:8px; border-radius:8px;">
+            <div style="font-weight:600; font-size:12px; text-transform:capitalize;">${analysis.vibe_report.communication_style}</div>
+            <div style="font-size:10px; color:#64748b;">Style</div>
+        </div>
+      </div>
+
       <div class="sherlock-section-title">🕊️ Wingman Wisdom</div>
       <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
         ${analysis.wingman_notes}
@@ -572,12 +590,13 @@ function renderResults(analysis) {
       <div class="sherlock-section-title">💬 Suggested Replies</div>
       <div class="sherlock-replies">
         ${analysis.suggested_replies.map(r => `
-          <div class="sherlock-reply-box" onclick="navigator.clipboard.writeText('${r.text.replace(/'/g, "\\'")}')">
+          <div class="sherlock-reply-box copy-trigger" data-text="${escape(r.text)}">
             <div style="font-size: 13px; color: #0f172a;">${r.text}</div>
             <div class="sherlock-reply-meta">
               <span style="text-transform:capitalize">${r.tone}</span>
               <span style="color: ${scoreColor}; font-weight:600">${Math.round(r.success_probability * 100)}%</span>
             </div>
+            <div style="text-align:right; margin-top:4px; font-size:10px; color:#6366f1; font-weight:600; opacity:0; transition:opacity 0.2s;" class="copy-hint">Click to copy</div>
           </div>
         `).join('')}
       </div>
@@ -586,6 +605,31 @@ function renderResults(analysis) {
   
   // Scroll to results
   container.scrollIntoView({ behavior: 'smooth' });
+
+  // Add copy handlers using standard event listeners instead of inline onclick
+  container.querySelectorAll('.copy-trigger').forEach(el => {
+      el.addEventListener('click', () => {
+          const text = el.dataset.text;
+          navigator.clipboard.writeText(text).then(() => {
+              const hint = el.querySelector('.copy-hint');
+              const original = hint.textContent;
+              hint.textContent = "Copied!";
+              hint.style.opacity = 1;
+              setTimeout(() => {
+                  hint.textContent = original;
+                  hint.style.opacity = 0;
+              }, 2000);
+          });
+      });
+      
+      // Show hint on hover
+      el.addEventListener('mouseenter', () => {
+          el.querySelector('.copy-hint').style.opacity = 1;
+      });
+      el.addEventListener('mouseleave', () => {
+          el.querySelector('.copy-hint').style.opacity = 0;
+      });
+  });
 
   // OSINT Handler
   const osintBtn = document.getElementById('sherlock-osint-btn');

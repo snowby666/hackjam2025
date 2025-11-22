@@ -20,20 +20,20 @@
 }
 
 .dark {
-  --background: #020817;
+  --background: #020617;
   --foreground: #f8fafc;
-  --card: #020817;
+  --card: #0f172a;
   --card-foreground: #f8fafc;
   --primary: #6366f1;
-  --primary-foreground: #f8fafc;
+  --primary-foreground: #ffffff;
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
   --accent: #1e293b;
   --accent-foreground: #f8fafc;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
   --border: #1e293b;
   --input: #1e293b;
   --ring: #818cf8;
@@ -744,6 +744,7 @@ input:checked + .slider:before {
   line-height: 1;
   background: linear-gradient(135deg, var(--primary), #818cf8);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

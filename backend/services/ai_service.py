@@ -39,12 +39,23 @@ class AIService:
         
         # Add OSINT context if available
         if osint_context:
-            osint_summary = "OSINT BACKGROUND CHECK:\n"
+            osint_summary = "\n=== OSINT BACKGROUND CHECK ===\n"
             if osint_context.get("found_accounts"):
-                osint_summary += "Found profiles on: " + ", ".join([acc['site'] for acc in osint_context['found_accounts']]) + "\n"
-                osint_summary += "Consider this external context when analyzing the person's trustworthiness.\n"
+                osint_summary += f"Target Username: {osint_context.get('username')}\n"
+                osint_summary += "Found Profiles (with content summary):\n"
+                for acc in osint_context['found_accounts']:
+                    osint_summary += f"- {acc['site']}: {acc['url']}\n"
+                    if acc.get('page_summary'):
+                        osint_summary += f"  Content Preview: {acc['page_summary']}\n"
+                
+                osint_summary += "\nINSTRUCTIONS FOR OSINT INTEGRATION:\n"
+                osint_summary += "1. Cross-reference the conversation with these found profiles.\n"
+                osint_summary += "2. Detect inconsistencies (e.g., lying about job, location, interests).\n"
+                osint_summary += "3. Use profile content to suggest deeper conversation topics.\n"
+                osint_summary += "4. Assess 'Catfish' risk if profile data mismatches the conversation.\n"
             else:
-                osint_summary += "No public profiles found for the username.\n"
+                osint_summary += f"No public profiles found for username '{osint_context.get('username')}'. This might suggest a fake profile or privacy-conscious user.\n"
+            
             prompt += "\n" + osint_summary
         
         logger.info(f"Sending request to OpenAI model: {self.model}")

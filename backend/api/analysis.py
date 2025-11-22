@@ -136,6 +136,29 @@ async def analyze_screenshot(
         {"$inc": {"stats.total_analyses": 1}}
     )
     
+    # Enforce 50 analysis limit per user
+    try:
+        # Count total analyses for this user
+        total_analyses = await db.analyses.count_documents({"user_id": str(user_id)})
+        
+        if total_analyses > 50:
+            # Find oldest analyses to remove
+            # We want to keep 50, so remove (total - 50) oldest
+            excess = total_analyses - 50
+            
+            # Get IDs of oldest analyses
+            oldest_cursor = db.analyses.find(
+                {"user_id": str(user_id)}
+            ).sort("timestamp", 1).limit(excess)
+            
+            oldest_ids = [doc["_id"] async for doc in oldest_cursor]
+            
+            if oldest_ids:
+                await db.analyses.delete_many({"_id": {"$in": oldest_ids}})
+                print(f"Removed {len(oldest_ids)} old analyses for user {user_id}")
+    except Exception as e:
+        print(f"Error enforcing analysis limit: {e}")
+    
     # Return analysis with ID
     analysis_dict["id"] = str(result.inserted_id)
     # Remove _id to avoid serialization issues with raw ObjectId
@@ -180,6 +203,42 @@ async def get_analysis(
         raise
     except Exception as e:
         print(f"Error getting analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+
+@router.delete("/{analysis_id}")
+async def delete_analysis(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete specific analysis"""
+    
+    db = await get_database()
+    user_id = current_user["_id"]
+    
+    try:
+        if not ObjectId.is_valid(analysis_id):
+             raise HTTPException(status_code=400, detail="Invalid analysis ID format")
+             
+        analysis_obj_id = ObjectId(analysis_id)
+        analysis = await db.analyses.find_one({"_id": analysis_obj_id})
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+            
+        # Verify ownership
+        analysis_user_id = analysis.get("user_id")
+        if str(analysis_user_id) != str(user_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+            
+        # Delete analysis
+        await db.analyses.delete_one({"_id": analysis_obj_id})
+        
+        return {"message": "Analysis deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting analysis: {e}")
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 

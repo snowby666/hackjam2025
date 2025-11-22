@@ -34,6 +34,7 @@ const mainUI = {
   modeBtns: document.querySelectorAll('.mode-btn'),
   analysisOverlay: document.getElementById('analysisOverlay'),
   closeAnalysisBtn: document.getElementById('closeAnalysis'),
+  deleteAnalysisBtn: document.getElementById('deleteAnalysisBtn'),
   analysisContent: document.getElementById('analysisContent')
 };
 
@@ -96,7 +97,10 @@ function setupEventListeners() {
   // Logout / Theme / Refresh
   mainUI.logoutBtn.addEventListener('click', handleLogout);
   mainUI.themeToggle.addEventListener('click', toggleTheme);
-  mainUI.refreshBtn.addEventListener('click', loadRecentAnalyses);
+  mainUI.refreshBtn.addEventListener('click', async () => {
+    await loadRecentAnalyses();
+    showToast("Refreshed!");
+  });
   mainUI.settingsBtn.addEventListener('click', showSettingsView);
 
   // Screenshot Modes
@@ -113,6 +117,9 @@ function setupEventListeners() {
 
   // Close Analysis Overlay
   mainUI.closeAnalysisBtn.addEventListener('click', closeAnalysis);
+  
+  // Delete Analysis
+  mainUI.deleteAnalysisBtn.addEventListener('click', deleteCurrentAnalysis);
 
   // Settings view events
   settingsUI.backBtn.addEventListener('click', showMainView);
@@ -340,7 +347,10 @@ function renderAnalysisCard(conv) {
   `;
 }
 
+let currentAnalysisId = null;
+
 async function viewAnalysis(analysisId) {
+  currentAnalysisId = analysisId;
   try {
     const response = await fetch(`${API_BASE_URL}/analyze/${analysisId}`, {
       headers: { 'Authorization': `Bearer ${authToken}` }
@@ -349,6 +359,27 @@ async function viewAnalysis(analysisId) {
     showAnalysis(analysis);
   } catch (error) {
     alert('Failed to load analysis');
+  }
+}
+
+async function deleteCurrentAnalysis() {
+  if (!currentAnalysisId) return;
+  
+  if (!confirm("Are you sure you want to delete this analysis?")) return;
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/analyze/${currentAnalysisId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (!response.ok) throw new Error("Failed to delete");
+    
+    showToast("Analysis deleted", "🗑️");
+    closeAnalysis();
+    await loadRecentAnalyses();
+  } catch (error) {
+    alert("Error deleting analysis");
   }
 }
 

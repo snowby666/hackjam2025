@@ -134,11 +134,59 @@ class OsintService:
             traceback.print_exc()
             return {"error": f"{str(e)}"}
         
+        # Fetch content for found accounts asynchronously
+        if results:
+            try:
+                async with httpx.AsyncClient(verify=False) as client:
+                    tasks = [self._fetch_page_content(client, res['url']) for res in results]
+                    contents = await asyncio.gather(*tasks)
+                    
+                    for res, content in zip(results, contents):
+                        if content:
+                            res['page_summary'] = content
+            except Exception as e:
+                print(f"Error fetching page contents: {e}")
+
         print(f"Results: {results}")
         return {
             "username": username,
             "found_accounts": results,
             "total_checked": "Fast Scan Mode"
         }
+
+    async def _fetch_page_content(self, client: httpx.AsyncClient, url: str) -> str:
+        """Fetch and summarize page content"""
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            response = await client.get(url, headers=headers, timeout=5.0, follow_redirects=True)
+            
+            if response.status_code == 200:
+                content = response.text
+                
+                # Clean HTML
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(content, 'html.parser')
+                    
+                    # Remove noise
+                    for tag in soup(["script", "style", "meta", "link", "noscript", "header", "footer", "nav"]):
+                        tag.extract()
+                        
+                    text = soup.get_text(separator=' ', strip=True)
+                except ImportError:
+                    # Fallback if bs4 missing
+                    import re
+                    text = re.sub(r'<[^>]+>', ' ', content)
+                    text = re.sub(r'\s+', ' ', text).strip()
+                
+                # Truncate to keep it brief (200 chars)
+                if len(text) > 200:
+                    return text[:200] + "..."
+                return text
+        except Exception:
+            pass
+        return None
 
 
