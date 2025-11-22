@@ -20,18 +20,17 @@ async def list_conversations(
     """List user's conversations"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     conversations = await db.conversations.find(
-        {"user_id": user_id}
+        {"user_id": user_uuid}
     ).sort("updated_at", -1).skip(skip).limit(limit).to_list(length=limit)
     
     for conv in conversations:
         conv["id"] = str(conv["_id"])
-        if "user_id" in conv:
-            conv["user_id"] = str(conv["user_id"])
+        # user_id is already uuid string, no need to convert
         
-        # Remove _id to avoid serialization issues if not handled by model
+        # Remove _id to avoid serialization issues
         if "_id" in conv:
             del conv["_id"]
             
@@ -67,18 +66,18 @@ async def get_conversation(
     """Get specific conversation"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     try:
         conv_obj_id = ObjectId(conversation_id)
         conversation = await db.conversations.find_one({"_id": conv_obj_id})
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        if conversation["user_id"] != user_id:
+        if conversation["user_id"] != user_uuid:
             raise HTTPException(status_code=403, detail="Access denied")
         
         conversation["id"] = str(conversation["_id"])
-        conversation["user_id"] = str(conversation["user_id"])
+        # conversation["user_id"] is already UUID string
         if "_id" in conversation:
             del conversation["_id"]
             
@@ -98,10 +97,10 @@ async def create_conversation(
     """Create new conversation"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     conversation = {
-        "user_id": user_id,
+        "user_id": user_uuid, # Use UUID
         "platform": platform,
         "participant_name": participant_name,
         "screenshots": [],
@@ -127,12 +126,12 @@ async def update_conversation(
     """Update conversation"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     try:
         conv_obj_id = ObjectId(conversation_id)
         conversation = await db.conversations.find_one({"_id": conv_obj_id})
-        if not conversation or conversation["user_id"] != user_id:
+        if not conversation or conversation["user_id"] != user_uuid:
             raise HTTPException(status_code=404, detail="Conversation not found")
     except HTTPException:
         raise
@@ -161,12 +160,12 @@ async def delete_conversation(
     """Delete conversation"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     try:
         conv_obj_id = ObjectId(conversation_id)
         conversation = await db.conversations.find_one({"_id": conv_obj_id})
-        if not conversation or conversation["user_id"] != user_id:
+        if not conversation or conversation["user_id"] != user_uuid:
             raise HTTPException(status_code=404, detail="Conversation not found")
     except HTTPException:
         raise
@@ -188,12 +187,12 @@ async def get_conversation_timeline(
     """Get interest score timeline for conversation"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     try:
         conv_obj_id = ObjectId(conversation_id)
         conversation = await db.conversations.find_one({"_id": conv_obj_id})
-        if not conversation or conversation["user_id"] != user_id:
+        if not conversation or conversation["user_id"] != user_uuid:
             raise HTTPException(status_code=404, detail="Conversation not found")
     except HTTPException:
         raise

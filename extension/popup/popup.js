@@ -293,10 +293,37 @@ function renderAnalysisCard(conv) {
   const hasAnalysis = score !== null && score !== undefined;
   const name = conv.participant_name || 'Unknown';
   const platform = conv.platform || 'Chat';
-  const date = new Date(conv.updated_at || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const dateObj = new Date(conv.updated_at || Date.now());
+  const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   
-  // If no analysis yet, show pending state
+  // Calculate time difference in minutes
+  const timeDiff = (Date.now() - dateObj.getTime()) / (1000 * 60);
+  
+  // If no analysis yet...
   if (!hasAnalysis) {
+    // If it's been more than 10 minutes, assume failure
+    if (timeDiff > 10) {
+       return `
+        <div class="analysis-card" style="border-left: 4px solid #ef4444;">
+          <div class="card-top">
+            <div class="card-user">
+              <div class="card-avatar" style="background: #fee2e2; color: #ef4444;">❌</div>
+              <div class="card-meta">
+                <span class="card-name">${name}</span>
+                <span class="card-platform">${platform}</span>
+              </div>
+            </div>
+            <span class="card-date">${dateStr}</span>
+          </div>
+          <div class="card-status" style="color: #ef4444; justify-content: space-between;">
+            <span>Analysis Failed</span>
+            <button class="copy-pill" style="background: #fee2e2; color: #ef4444;" onclick="event.stopPropagation(); retryAnalysis('${conv.id}')">Retry</button>
+          </div>
+        </div>
+      `;
+    }
+  
+    // Otherwise show pending state
     return `
       <div class="analysis-card opacity-70" style="cursor: default;">
         <div class="card-top">
@@ -307,7 +334,7 @@ function renderAnalysisCard(conv) {
               <span class="card-platform">${platform}</span>
             </div>
           </div>
-          <span class="card-date">${date}</span>
+          <span class="card-date">${dateStr}</span>
         </div>
         <div class="card-status">
           <div class="status-dot"></div>
@@ -329,7 +356,7 @@ function renderAnalysisCard(conv) {
             <span class="card-platform">${platform}</span>
           </div>
         </div>
-        <span class="card-date">${date}</span>
+        <span class="card-date">${dateStr}</span>
       </div>
       
       <div class="card-score-row">
@@ -348,6 +375,33 @@ function renderAnalysisCard(conv) {
 }
 
 let currentAnalysisId = null;
+
+async function retryAnalysis(conversationId) {
+  if (!confirm("Retry analysis for this conversation?")) return;
+  
+  try {
+    // We can't fully retry without the original image unless we stored it (which we usually don't for privacy/storage reasons in this MVP)
+    // But if the user just wants to delete the failed entry, we can offer that.
+    // Or if the backend supports re-analyzing existing conversation images (if stored).
+    // Assuming backend stores images in 'screenshots' array of conversation.
+    
+    const response = await fetch(`${API_BASE_URL}/analyze/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ conversation_id: conversationId, screenshot_index: 0 })
+    });
+    
+    if (!response.ok) throw new Error('Retry failed');
+    
+    showToast("Analysis started...");
+    await loadRecentAnalyses(); // Refresh to show pending
+  } catch (error) {
+    alert('Failed to retry analysis: ' + error.message);
+  }
+}
 
 async function viewAnalysis(analysisId) {
   currentAnalysisId = analysisId;

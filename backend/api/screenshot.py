@@ -39,21 +39,21 @@ async def upload_screenshot(
         )
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user.get("uuid")
     
     # Create or update conversation
     if conversation_id:
         try:
             conv_obj_id = ObjectId(conversation_id)
             conversation = await db.conversations.find_one({"_id": conv_obj_id})
-            if not conversation or conversation["user_id"] != user_id:
+            if not conversation or conversation["user_id"] != user_uuid:
                 raise HTTPException(status_code=404, detail="Conversation not found")
         except:
             raise HTTPException(status_code=400, detail="Invalid conversation ID")
     else:
         # Create new conversation
         conversation = {
-            "user_id": user_id,
+            "user_id": user_uuid, # Use UUID
             "platform": platform or "unknown",
             "participant_name": participant_name,
             "screenshots": [],

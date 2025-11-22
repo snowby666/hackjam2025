@@ -74,7 +74,7 @@ class ScreenshotData(BaseModel):
 
 class Conversation(BaseModel):
     id: Optional[PyObjectId] = Field(default=None, alias="_id")
-    user_id: str # Changed from PyObjectId to str to support UUID
+    user_id: str # UUID string
     platform: str  # iMessage, WhatsApp, etc.
     participant_name: Optional[str] = None
     screenshots: List[ScreenshotData] = []

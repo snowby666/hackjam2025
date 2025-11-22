@@ -103,9 +103,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     
     db = await get_database()
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    except:
+        user = None
+        
     if user is None:
         raise credentials_exception
+        
+    if "uuid" not in user or not user["uuid"]:
+        import uuid
+        new_uuid = str(uuid.uuid4())
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"uuid": new_uuid}}
+        )
+        user["uuid"] = new_uuid
+        
     return user
 
 

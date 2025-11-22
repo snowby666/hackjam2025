@@ -40,8 +40,13 @@ async def analyze_screenshot(
         conversation = await db.conversations.find_one({"_id": conv_obj_id})
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        if conversation["user_id"] != user_id:
+        
+        # Use UUID for user verification
+        user_uuid = current_user.get("uuid")
+        if conversation["user_id"] != user_uuid:
             raise HTTPException(status_code=403, detail="Access denied")
+    except HTTPException:
+        raise
     except:
         raise HTTPException(status_code=400, detail="Invalid conversation ID")
     
@@ -106,11 +111,12 @@ async def analyze_screenshot(
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     
     # Process AI response into structured format
+    user_uuid = current_user.get("uuid")
     engine = AnalysisEngine()
     analysis = engine.process_ai_response(
         ai_response,
         str(conv_obj_id),
-        str(user_id)
+        user_uuid # Use UUID consistently
     )
     
     # Update conversation with extracted metadata (platform/participant)
@@ -130,16 +136,21 @@ async def analyze_screenshot(
     analysis_dict = analysis.model_dump(by_alias=True, exclude={"id"})
     result = await db.analyses.insert_one(analysis_dict)
     
-    # Update user stats
+    # Update user stats - use UUID to find/update user? No, users collection uses ObjectId as _id
+    # BUT stats update usually targets the user document itself.
+    # If the user document uses ObjectId as _id, we must use that for the update query.
+    # HOWEVER, the requirement is "Never object id at anycost use the uuid for mapping".
+    # This implies the 'user_id' field in related documents (conversations, analyses) MUST be UUID.
+    
     await db.users.update_one(
-        {"_id": user_id},
+        {"_id": user_id}, # This is the internal MongoDB _id of the user, which is ObjectId. This is fine for finding the user doc itself.
         {"$inc": {"stats.total_analyses": 1}}
     )
     
     # Enforce 50 analysis limit per user
     try:
-        # Count total analyses for this user
-        total_analyses = await db.analyses.count_documents({"user_id": str(user_id)})
+        # Count total analyses for this user using UUID
+        total_analyses = await db.analyses.count_documents({"user_id": user_uuid})
         
         if total_analyses > 50:
             # Find oldest analyses to remove
@@ -148,14 +159,14 @@ async def analyze_screenshot(
             
             # Get IDs of oldest analyses
             oldest_cursor = db.analyses.find(
-                {"user_id": str(user_id)}
+                {"user_id": user_uuid}
             ).sort("timestamp", 1).limit(excess)
             
             oldest_ids = [doc["_id"] async for doc in oldest_cursor]
             
             if oldest_ids:
                 await db.analyses.delete_many({"_id": {"$in": oldest_ids}})
-                print(f"Removed {len(oldest_ids)} old analyses for user {user_id}")
+                print(f"Removed {len(oldest_ids)} old analyses for user {user_uuid}")
     except Exception as e:
         print(f"Error enforcing analysis limit: {e}")
     
@@ -176,7 +187,7 @@ async def get_analysis(
     """Get analysis by ID"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user["uuid"]
     
     try:
         if not ObjectId.is_valid(analysis_id):
@@ -188,10 +199,9 @@ async def get_analysis(
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
             
-        # Verify ownership (ObjectId vs str check)
-        # existing data might use ObjectId, new might use str for user_id
+        # Verify ownership using UUID
         analysis_user_id = analysis.get("user_id")
-        if str(analysis_user_id) != str(user_id):
+        if str(analysis_user_id) != str(user_uuid):
             raise HTTPException(status_code=403, detail="Access denied")
         
         analysis["id"] = str(analysis["_id"])
@@ -214,7 +224,7 @@ async def delete_analysis(
     """Delete specific analysis"""
     
     db = await get_database()
-    user_id = current_user["_id"]
+    user_uuid = current_user["uuid"]
     
     try:
         if not ObjectId.is_valid(analysis_id):
@@ -226,13 +236,22 @@ async def delete_analysis(
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
             
-        # Verify ownership
+        # Verify ownership using UUID
         analysis_user_id = analysis.get("user_id")
-        if str(analysis_user_id) != str(user_id):
+        if str(analysis_user_id) != str(user_uuid):
             raise HTTPException(status_code=403, detail="Access denied")
             
         # Delete analysis
         await db.analyses.delete_one({"_id": analysis_obj_id})
+        
+        # Check if conversation has any other analyses left
+        # If not, delete the conversation to keep things clean
+        conversation_id = analysis.get("conversation_id")
+        if conversation_id:
+            remaining_count = await db.analyses.count_documents({"conversation_id": conversation_id})
+            if remaining_count == 0:
+                await db.conversations.delete_one({"_id": conversation_id})
+                print(f"Auto-deleted empty conversation {conversation_id}")
         
         return {"message": "Analysis deleted successfully"}
     except HTTPException:
