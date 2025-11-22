@@ -39,6 +39,7 @@ python main.py
 
 - 📸 One-click screenshot capture
 - 🧠 AI-powered conversation analysis
+- 🛰️ **OSINT background check** support via Tookie-OSINT when “Advanced Mode” is enabled
 - 📊 Interest score (0-100)
 - 🚩 Red/Green flag detection
 - 💬 Smart reply suggestions
@@ -51,7 +52,15 @@ See `docs/` directory for detailed API documentation and architecture details.
 
 ## 🔐 Environment Variables
 
-See `.env.example` for required configuration.
+See `.env.example` for required configuration. When enabling OSINT mode you’ll also want to create a `backend/.env.local` (or override your `.env`) with:
+
+```
+OSINT_ENABLED=true
+TOOKIE_BASE_PATH=backend/tookie-osint
+PYTHONIOENCODING=utf-8
+```
+
+The backend automatically handles UUID mapping and rate limits—just make sure MongoDB is reachable before running scans.
 
 ## 🏆 Built for Hackathon 2025
 
