@@ -1,3 +1,10 @@
+import sys
+import asyncio
+
+# Configure Windows asyncio loop policy
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -65,5 +72,5 @@ async def health():
 
 
 if __name__ == "__main__":
-    CommandLineInterface().run(["main:app", "--bind", "127.0.0.1", "--port", "8000"])
+    CommandLineInterface().run(["main:app", "--bind", "127.0.0.1", "--port", "8000", "--application-close-timeout", "300"])
 

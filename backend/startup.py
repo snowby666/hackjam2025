@@ -15,6 +15,13 @@ async def startup():
         raise
 
 
+import uvicorn
+import sys
+import asyncio
+
 if __name__ == "__main__":
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        
     asyncio.run(startup())
 

@@ -10,9 +10,11 @@ from database.schemas import Analysis
 from api.auth import get_current_user
 from services.ai_service import AIService
 from services.analysis_engine import AnalysisEngine
+from services.osint_service import OsintService
 
 router = APIRouter()
 ai_service = AIService()
+osint_service = OsintService()
 
 
 class AnalysisRequest(BaseModel):
@@ -57,6 +59,36 @@ async def analyze_screenshot(
     
     # Get user preferences for context
     user_preferences = current_user.get("preferences", {})
+    advanced_mode = user_preferences.get("advanced_mode", False)
+    
+    print(f"Advanced mode: {advanced_mode}")
+    print(f"User preferences: {user_preferences}")
+    
+    osint_context = None
+    
+    # Advanced Mode: OSINT Background Check
+    if advanced_mode:
+        try:
+            # 1. Extract Metadata to find username
+            metadata = await ai_service.extract_metadata(image_bytes)
+            print(f"Metadata: {metadata}")
+            username = metadata.get("username")
+            print(f"Username: {username}")
+            
+            # Clean username and check validity
+            if username and isinstance(username, str) and username.lower() not in ["unknown", "null", "none"]:
+                # Remove @ if present
+                if username.startswith("@"):
+                    username = username[1:]
+                    
+                print(f"Cleaned username: {username}")
+                
+                # 2. Run OSINT Check
+                # Note: This increases latency but provides deeper context
+                osint_context = await osint_service.check_username(username)
+                print(f"OSINT context: {osint_context}")
+        except Exception as e:
+            print(f"OSINT check failed (continuing without it): {e}")
     
     # Determine conversation stage (simplified - could be enhanced)
     screenshot_count = len(screenshots)
@@ -67,7 +99,8 @@ async def analyze_screenshot(
         ai_response = await ai_service.analyze_screenshot(
             image_bytes,
             user_preferences,
-            conversation_stage
+            conversation_stage,
+            osint_context=osint_context
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

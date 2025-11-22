@@ -583,7 +583,9 @@ async function loadUserSettings() {
     if (user.preferences) {
       if (user.preferences.attachment_style) settingsUI.prefAttachment.value = user.preferences.attachment_style;
       if (user.preferences.dating_goal) settingsUI.prefGoal.value = user.preferences.dating_goal;
-      if (user.preferences.advanced_mode !== undefined) settingsUI.prefAdvanced.checked = user.preferences.advanced_mode;
+      // Robust boolean check
+      const adv = user.preferences.advanced_mode;
+      settingsUI.prefAdvanced.checked = (adv === true || adv === 'true');
     }
   } catch (error) {
     console.error('Failed to load settings', error);
