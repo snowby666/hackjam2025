@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Sherlock</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app-container">
+    
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <span>🕵️‍♀️</span>
+        </div>
+        <div class="brand-text">
+          <h1>Sherlock</h1>
+          <p>AI Wingman</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <button id="themeToggle" class="icon-btn" title="Toggle Theme">
+          <span>🌓</span>
+        </button>
+        <button id="settingsBtn" class="icon-btn" title="Settings">
+          <span>⚙️</span>
+        </button>
+        <button id="logoutBtn" class="icon-btn hidden" title="Logout">
+          <span>🚪</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Auth View -->
+    <div id="authView" class="view-container hidden">
+      <div class="auth-header">
+        <div class="auth-icon">
+          <span>🔐</span>
+        </div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to start analyzing conversations</p>
+      </div>
+
+      <div class="auth-form-container">
+        <div class="tabs-list">
+          <button class="tab-trigger active" data-tab="login">Login</button>
+          <button class="tab-trigger" data-tab="register">Register</button>
+        </div>
+
+        <form id="authForm" class="form-stack">
+          <div class="form-group">
+            <input type="email" id="emailInput" placeholder="Email address" class="input-field" required />
+          </div>
+          <div class="form-group">
+            <input type="password" id="passwordInput" placeholder="Password" class="input-field" required />
+          </div>
+          <button type="submit" class="btn-primary full-width">
+            <span class="btn-text">Sign In</span>
+            <div class="loader hidden"></div>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main View -->
+    <main id="mainView" class="view-container hidden">
+      <!-- Screenshot Controls -->
+      <div class="controls-section">
+        <div class="mode-selector">
+          <button class="mode-btn active" data-mode="visible" title="Capture visible part">
+            <span class="mode-icon">👁️</span>
+            <span class="mode-label">Visible</span>
+          </button>
+          <button class="mode-btn" data-mode="full" title="Capture full page">
+            <span class="mode-icon">📄</span>
+            <span class="mode-label">Full Page</span>
+          </button>
+          <button class="mode-btn" data-mode="selection" title="Select area">
+            <span class="mode-icon">✂️</span>
+            <span class="mode-label">Snippet</span>
+          </button>
+        </div>
+
+        <div class="action-area">
+          <button id="captureBtn" class="btn-primary big-btn">
+            <span class="btn-icon">📸</span>
+            <span id="captureBtnText">Analyze Conversation</span>
+            <div class="loader hidden"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Analyses List -->
+      <div class="list-section">
+        <div class="list-header">
+          <h3>Recent Analyses</h3>
+          <button id="refreshBtn" class="link-btn">Refresh</button>
+        </div>
+        <div id="analysesList" class="analyses-stack">
+          <!-- Analyses will be injected here -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Settings View -->
+    <section id="settingsView" class="view-container hidden">
+      <div class="settings-header">
+        <button id="backFromSettings" class="icon-btn">
+          ←
+        </button>
+        <h2>Settings</h2>
+      </div>
+
+      <div class="settings-section">
+        <h3>Account</h3>
+        <div class="settings-card">
+          <div class="settings-row">
+            <span class="label">Email</span>
+            <span id="userEmailDisplay" class="value">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="label">User UUID</span>
+            <span id="userUuidDisplay" class="value">—</span>
+          </div>
+          <button id="logoutBtnSettings" class="btn-secondary danger">Log out</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Preferences</h3>
+        <div class="settings-card">
+          <label>
+            Attachment Style
+            <select id="prefAttachment" class="input-field">
+              <option value="secure">Secure</option>
+              <option value="anxious">Anxious</option>
+              <option value="avoidant">Avoidant</option>
+            </select>
+          </label>
+          <label>
+            Dating Goal
+            <select id="prefGoal" class="input-field">
+              <option value="serious">Serious</option>
+              <option value="casual">Casual</option>
+              <option value="exploring">Exploring</option>
+            </select>
+          </label>
+          
+          <div class="settings-row" style="align-items:center; margin-top:15px; justify-content: space-between; padding: 5px 0;">
+            <div style="flex:1;">
+              <div style="font-weight:600; font-size: 0.9rem;">Advanced Mode</div>
+              <div style="font-size:0.75rem; color:var(--muted-foreground); margin-top: 2px;">Include OSINT background checks</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="prefAdvanced">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <button id="saveSettings" class="btn-primary full-width" style="margin-top:1.5rem;">Save Changes</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analysis Result Overlay (Slide up) -->
+    <div id="analysisOverlay" class="overlay">
+      <div class="overlay-header">
+        <button id="closeAnalysis" class="collapse-btn" title="Collapse panel">
+          <span class="chevron"></span>
+        </button>
+        <h2>Analysis Results</h2>
+      </div>
+      <div id="analysisContent" class="overlay-content">
+        <!-- Content injected by JS -->
+      </div>
+    </div>
+
+    <!-- Selection Overlay (Hidden, handled by content script) -->
+    <div id="selectionInstruction" class="selection-overlay hidden">
+      <div class="selection-message">
+        <div class="selection-icon">✂️</div>
+        <h3>Select Area</h3>
+        <p>Click and drag on the page to select the conversation area.</p>
+        <button id="cancelSelection" class="cancel-btn">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="utils/api.js"></script>
+  <script src="utils/storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
